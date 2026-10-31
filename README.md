@@ -42,7 +42,10 @@ powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1          
 powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1 -Uninstall   # remove
 ```
 
-Only one copy runs at a time, so starting it by hand while autostart already did is harmless.
+This registers a Task Scheduler task "Desk Widget" for your user (no admin rights). It starts the widget
+at logon, on unlock and after waking from sleep, so a widget closed before sleep comes back.
+Only one copy runs at a time, so a trigger firing while the widget is open, or starting it by hand, is harmless.
+The log (`%APPDATA%\weather-widget\widget.log`) records every start, stop and crash.
 
 ## Usage
 
