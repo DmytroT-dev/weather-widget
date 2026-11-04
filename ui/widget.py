@@ -20,6 +20,7 @@ from ui.city_dialog import CityDialog, SearchCallback
 from ui.formatting import format_temperature, format_wind
 from ui.layered import LayeredWindow, virtual_screen
 from ui.scene import Scene
+from ui.sounds import PHASE_START_SOUNDS
 from weather import meteocons
 from weather.model import Place, Weather
 
@@ -108,8 +109,9 @@ class DeskWidget(tk.Tk):
         # Reschedule first: if anything below raises, the loop must keep running, otherwise
         # the widget silently freezes on its last frame.
         self.after(FRAME_MS, self._frame)
-        if self._pomodoro.update():
-            self._notify_phase_end()
+        new_phase = self._pomodoro.update()
+        if new_phase:
+            self._notify_phase_end(new_phase)
         self._render_pomodoro()
         self._window.show(self._scene.compose(time.monotonic()))
 
@@ -233,10 +235,14 @@ class DeskWidget(tk.Tk):
         phase_color = look.FOCUS if phase is Phase.FOCUS else look.BREAK
         self._scene.timer_color = phase_color if running else look.MUTED
 
-    def _notify_phase_end(self) -> None:
+    def _notify_phase_end(self, new_phase: Phase) -> None:
+        # Runs on the Tk thread every frame: the sound must be async, otherwise the widget
+        # freezes until it finishes playing.
         try:
             import winsound
-            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+            # SND_FILENAME without SND_NODEFAULT: a missing file still plays the default system sound.
+            sound = str(PHASE_START_SOUNDS[new_phase])
+            winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC)
         except (ImportError, RuntimeError):
             self.bell()
 
