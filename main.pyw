@@ -1,5 +1,6 @@
 """Entry point. A .pyw file runs under pythonw, without a console window."""
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 
 import config
@@ -20,10 +21,27 @@ def setup_logging() -> None:
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
+log = logging.getLogger("main")
+
+
 def main() -> None:
-    if not single_instance.acquire("desk-widget"):
-        return  # already running, e.g. started by autostart and then by hand
+    # Logging comes first, so that every way the process ends leaves a line in the log:
+    # a second instance, a normal close and a crash.
     setup_logging()
+    if not single_instance.acquire("desk-widget"):
+        log.info("another instance is already running, exiting (pid %d)", os.getpid())
+        return  # e.g. autostart fired on unlock while the widget was still open
+    log.info("started %s (pid %d)", config.APP, os.getpid())
+    try:
+        run()
+    except Exception:
+        log.exception("crashed")  # pythonw has no stderr: without this the traceback is lost
+        raise
+    finally:
+        log.info("stopped (pid %d)", os.getpid())
+
+
+def run() -> None:
     scale = enable_dpi_awareness()  # before any Tk window exists, otherwise Windows blurs it
     weather = WeatherService(config.METNO_USER_AGENT)
     geocoder = GeocodingClient(config.ANONYMOUS_USER_AGENT)
